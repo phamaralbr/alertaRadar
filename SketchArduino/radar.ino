@@ -189,7 +189,6 @@ void readMemory(){
         // Serial.println("Closing File");
         f.close();
       }
-      Serial.println();
      
     } else {
       // Serial.println("Unable To Find file");
@@ -282,11 +281,11 @@ bool isRadarProximo(double lat, double lon, int direction, int dirtype){
 }
 
 void getNearRadares(File f){
-  unsigned long millisComeco = millis();
+  // unsigned long millisComeco = millis();
 
   memset(radares, 0, sizeof(radares));
 
-  Serial.println("Montando array com radares proximos");
+  // Serial.println("Montando array com radares proximos");
 
   smartDelay(0);
 
@@ -322,8 +321,8 @@ void getNearRadares(File f){
     }
   }
 
-  Serial.print("Tempo de busca (s): ");
-  Serial.println((millis() - millisComeco));
+  // Serial.print("Tempo de busca (s): ");
+  // Serial.println((millis() - millisComeco));
 
 }
 
@@ -349,7 +348,7 @@ unsigned long findNearLon(File f, double coordinateOffset, unsigned long start, 
   } else if (gpsLon >= lon){
     return findNearLon(f, coordinateOffset, start, metade);
   } else {
-    Serial.println("Erro. Radar proximo nao encontrado");
+    // Serial.println("Erro. Radar proximo nao encontrado");
     return f.position();
   }
 
