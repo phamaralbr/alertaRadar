@@ -17,10 +17,13 @@ SSD1306Wire display(0x3c, D1, D2); // ADDRESS, SDA, SCL
 SoftwareSerial gpsSerial(D3, D4); // RX, TX // Connect only RX pin
 TinyGPSPlus gps;
 
+//Buzzer pin D5
+const unsigned char buzzer = D5;
+
 bool    spiffsActive = false;
 #define RADARFILE "/sorted_maparadar.txt"
 
-const double searchMargin = 0.1; // 11.1 km // Buscar radares em uma area de 11x11km
+const double searchMargin = 0.1; // 11.1 km // Margem de busca. Buscar radares em uma area de 11x11km
 const double innerMargin = searchMargin * 0.8; // Margem interna. Ao extrapolar, procura outro radar com longitude proxima
 
 const int tempoAlerta = 12; // Quanto tempo antes do radar comecar a alertar
@@ -33,8 +36,6 @@ const int limiteRadares = 400; // Limite de radares a verificar. Tamanho do arra
 unsigned long indicatorMillis = 0; // Contador de millis para o indicador de funcionamento
 bool indicator = false;
 
-const unsigned char buzzer = D5;
-
 struct radar{
   double lon;
   double lat;
@@ -46,19 +47,28 @@ struct radar{
 
 radar radares[limiteRadares];
 
+//////////////
+
+// Buscar a posicao no arquivo do radar mais próximo de (longitude - 10km) e do radar mais proximo de (longitude + 10km)
+// Varrer todos os radares nessa faixa e salvar em um array os radares com latitude entre lat + 10km e lat - 10km
+// Assim terei um array com todos os radares em uma area de 10x10km (searchMargin)
+
+//Ficar em loop verificando esses radares até que eu saia da area de busca. Caso saia eu monto um novo array.
+
+
 void setup() {
 
   pinMode (buzzer,OUTPUT) ;
 
-  Serial.begin(115200);
-  Serial.println("");
-  Serial.println("Projeto Alerta Radar");
+  // Serial.begin(115200);
+  // Serial.println("");
+  // Serial.println("Projeto Alerta Radar");
 
   if (SPIFFS.begin()) {
-      Serial.println("SPIFFS Active");
+      // Serial.println("SPIFFS Active");
       spiffsActive = true;
   } else {
-      Serial.println("Unable to activate SPIFFS");
+      // Serial.println("Unable to activate SPIFFS");
   }
 
   
@@ -75,7 +85,8 @@ void loop() {
   readMemory();  
 }
 
-static void smartDelay(unsigned long ms) {  // This custom version of delay() ensures that the gps object is being "fed".
+// This custom version of delay() ensures that the gps object is being "fed".
+static void smartDelay(unsigned long ms) {
   unsigned long start = millis();
   do {
     while (gpsSerial.available()) {
@@ -89,10 +100,10 @@ void readMemory(){
     if (SPIFFS.exists(RADARFILE)) {
       File f = SPIFFS.open(RADARFILE, "r");
       if (!f) {
-        Serial.println("Unable To Open file for Reading");
+        // Serial.println("Unable To Open file for Reading");
       } 
       else {
-        Serial.println("Opened file for Reading");
+        // Serial.println("Opened file for Reading");
         unsigned long posZero = f.position();
         while(true){
           isGpsWorking();
@@ -104,14 +115,14 @@ void readMemory(){
           f.seek(posZero);
           getNearRadares(f);
 
-          int camposPreenchidos = 0;
-          for (radar r : radares) { // for each element in the array
-            if(r.lon != 0){
-              camposPreenchidos++;
-            }
-          }
-
-          Serial.print("Campos preenchidos: " + String(camposPreenchidos) + "/" + String(sizeof(radares)/sizeof(radares[0])));
+          // // Verificar quantos campos do array foram preenchidos
+          // int camposPreenchidos = 0;
+          // for (radar r : radares) {
+          //   if(r.lon != 0){
+          //     camposPreenchidos++;
+          //   }
+          // }
+          // Serial.print("Campos preenchidos: " + String(camposPreenchidos) + "/" + String(sizeof(radares)/sizeof(radares[0])));
           
           while((gpsLon >= baseLon - innerMargin) && (gpsLon <= baseLon + innerMargin)){
             smartDelay(0);
@@ -173,18 +184,15 @@ void readMemory(){
                 break;
               }
             }
-
-            // Serial.println("Loopou");
-
           }
         }
-        Serial.println("Closing File");
+        // Serial.println("Closing File");
         f.close();
       }
       Serial.println();
      
     } else {
-      Serial.println("Unable To Find file");
+      // Serial.println("Unable To Find file");
     }
   }
 }
@@ -272,17 +280,6 @@ bool isRadarProximo(double lat, double lon, int direction, int dirtype){
     (((direcaoAteRadar >= direction - margemAngulo) && (direcaoAteRadar <= direction + margemAngulo)) || dirtype == 0 || (dirtype == 2 && (direcaoAteRadar >= direcaoInversa(direction) - margemAngulo) && (direcaoAteRadar <= direcaoInversa(direction) + margemAngulo)) ); // Se estamos nos aproximando do radar
 
 }
-
-//////////////
-
-
-
-// Buscar a posicao no arquivo do radar de longitude - 10km e do radar de longitude + 10km
-// Varrer todos os radares nessa faixa e salvar em um array os radares com latitude entre lat + 10km e lat - 10km
-// Assim terei um array com todos os radares em uma area de 10x10km
-
-//Margem de busca. Vai monitorar os radares em uma area quadrada de {searchMargin}.
-// double searchMargin = 0.1; // 11.1 km
 
 void getNearRadares(File f){
   unsigned long millisComeco = millis();
