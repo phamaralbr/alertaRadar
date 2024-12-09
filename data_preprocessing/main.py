@@ -41,6 +41,7 @@ def print_error(message):
 
 def fetch_and_validate_data():
     print_step("Step 1: Fetching token...")
+    print_step(TOKEN_URL)
     token = get_token(TOKEN_URL)
     if not token:
         print_error("Failed to retrieve token. Exiting.")
