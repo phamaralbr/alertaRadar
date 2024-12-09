@@ -88,6 +88,8 @@ def csv_to_binary_kd_tree(csv_filename, output_filename):
     save_kd_tree_to_file(kd_tree_root, output_filename)
     print(f"K-d tree saved to {output_filename}")
 
+    return total_points
+
 # # Example usage
 # if __name__ == "__main__":
 #     csv_filename = "coordinates.csv"  # Replace with your CSV file

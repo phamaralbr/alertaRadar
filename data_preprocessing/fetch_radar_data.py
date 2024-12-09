@@ -96,7 +96,7 @@ def download_csv_with_token(base_url, token, save_path):
 # # Step 4: Main script
 # if __name__ == "__main__":
 #     # Define URLs
-#     TOKEN_URL = "https://v1.api.maparadar.com/Token?usuario=phamatal"  # Token URL
+#     TOKEN_URL = "https://v1.api.maparadar.com/Token?usuario=user"  # Token URL
 #     TOKEN_VALIDATION_URL = "https://v1.api.maparadar.com/TokenValido"  # Token validation URL
 #     BASE_URL = "https://v1.api.maparadar.com/Exporta"  # CSV base URL
 
