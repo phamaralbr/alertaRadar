@@ -20,18 +20,3 @@ Utiliza as informações de radar disponíveis em: [maparadar.com](maparadar.com
 - Salvaremos esse arquivo na memória SPIFFS do ESP8266. Siga [este guia](https://www.instructables.com/Using-ESP8266-SPIFFS/).
 
 - Agora podemos conectar os módulos e fazer o upload do sketch **radar.ino** para a placa.
-
-
-## Setting Up the Environment
-
-After cloning the project, follow these steps to configure your environment:
-
-1. **Create a `.env` file**:  
-   In the root of the project, create a `.env` file (if it doesn't exist).
-
-2. **Add the environment variables**:  
-   Inside the `.env` file, add your radar service username (and any other required credentials or tokens).  
-   Example:
-
-   ```env
-   RADAR_USER=your_username_here

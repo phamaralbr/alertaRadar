@@ -26,3 +26,7 @@ float getLongitude() {
 float getSpeed() {
   return gps.speed.isValid() ? gps.speed.kmph() : -1.0;
 }
+
+float getCourse() {
+  return gps.course.isValid() ? gps.course.deg() : -1.0;
+}

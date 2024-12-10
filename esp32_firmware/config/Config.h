@@ -14,4 +14,12 @@
 #define GPS_SERIAL_PORT 2
 #define GPS_BAUD_RATE 9600
 
+// Radar bin file
+#define FILE_URL "https://raw.githubusercontent.com/phamaralbr/alertaRadar/main/data_preprocessing/data_output/kd_tree.bin"
+
+// Wi-Fi credentials
+#define WIFI_SSID "linksys"
+#define WIFI_PASSWORD "f1a2c3a415"
+#define WIFI_TIMEOUT 10000 // 10 seconds timeout for Wi-Fi connection
+
 #endif

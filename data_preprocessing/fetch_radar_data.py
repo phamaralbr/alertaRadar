@@ -68,6 +68,7 @@ def download_csv_with_token(base_url, token, save_path):
         "tipoExportacao": "igo8",
         "estado": "",
         "tipoAlerta": "1,2,4,5,6,7,9,",  # Added trailing comma
+        # "tipoAlerta": "1,2,4,5,", # Sem dados de Lombada, Policia, Pedagio
         "direcao": "true",
         "arquivosExternos": "true",
     }

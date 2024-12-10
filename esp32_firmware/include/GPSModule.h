@@ -11,5 +11,6 @@ void decodeGPSData();  // Separate function for GPS data decoding
 float getLatitude();
 float getLongitude();
 float getSpeed();
+float getCourse();
 
 #endif
