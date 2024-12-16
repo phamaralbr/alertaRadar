@@ -8,76 +8,112 @@
 
 #include "FS.h"
 #include "SPIFFS.h"
-#include <math.h>
+
+struct Node {
+  float lon;
+  float lat;
+  uint8_t node_type;
+  uint8_t speed;
+  uint8_t direction_type;
+  uint16_t direction;
+  uint32_t left_offset;
+  uint32_t right_offset;
+} __attribute__((packed));
 
 
-// Radar point structure (matches binary file format)
-typedef struct {
-    float lon;       // Longitude
-    float lat;       // Latitude
-    uint16_t type;   // Radar type
-    uint16_t speed;  // Speed limit
-    uint16_t dir_type;  // Direction type
-    uint16_t direction; // Direction
-} RadarPoint;
-
-#define RADAR_FILE "/kd_tree.bin"  // Path to binary file in SPIFFS
-#define RADAR_RANGE_METERS 100     // Search range in meters
-#define EARTH_RADIUS 6371000       // Earth radius in meters
-
-// Function to calculate Haversine distance between two points (in meters)
-float haversineDistance(float lat1, float lon1, float lat2, float lon2) {
-    float dLat = (lat2 - lat1) * M_PI / 180.0;
-    float dLon = (lon2 - lon1) * M_PI / 180.0;
-
-    lat1 = lat1 * M_PI / 180.0;
-    lat2 = lat2 * M_PI / 180.0;
-
-    float a = sin(dLat / 2) * sin(dLat / 2) +
-              cos(lat1) * cos(lat2) * sin(dLon / 2) * sin(dLon / 2);
-    float c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return EARTH_RADIUS * c;
+Node read_node(File &file, uint32_t offset) {
+  file.seek(offset);  // Seek to the correct position in the file
+  
+  Node node;
+  file.read((uint8_t*)&node, sizeof(Node));  // Read 21 bytes (size of Node structure)
+  
+  return node;
 }
 
-// Function to load and check radar points
-void checkRadarInRange(float lon, float lat, uint16_t speed, uint16_t direction) {
-    radarFile = SPIFFS.open(RADAR_FILE, "r");
-    if (!radarFile) {
-        Serial.println("Failed to open radar file.");
-        return;
-    }
+float haversine(float lon1, float lat1, float lon2, float lat2) {
+  const float R = 6371.0;  // Earth radius in kilometers
+  lon1 = radians(lon1);
+  lat1 = radians(lat1);
+  lon2 = radians(lon2);
+  lat2 = radians(lat2);
+  
+  float dlon = lon2 - lon1;
+  float dlat = lat2 - lat1;
+  float a = sin(dlat / 2) * sin(dlat / 2) + cos(lat1) * cos(lat2) * sin(dlon / 2) * sin(dlon / 2);
+  float c = 2 * atan2(sqrt(a), sqrt(1 - a));
+  return R * c;
+}
 
-    RadarPoint radar;
-    bool radarFound = false;
+Node best_node;
+float best_distance = -1;
 
-    Serial.println("Checking for radars in range...");
+Node nearest_neighbor_search(File &file, float target_lon, float target_lat, uint32_t offset, int depth, bool is_root) {
+  if (!is_root && offset == 0) {
+    return best_node;  // If no child exists, return the best result found
+  }
 
-    // Read radar points from the file
-    while (radarFile.available()) {
-        radarFile.readBytes((char*)&radar, sizeof(RadarPoint));
+  // Read the current node
+  Node node = read_node(file, offset);
+  
+  // If the node is invalid (e.g., end of tree or bad data), return the best node found
+  if (node.left_offset == 0 && node.right_offset == 0) {
+    return best_node;  // No further child nodes, stop the search
+  }
 
-        // Calculate distance to the radar
-        float distance = haversineDistance(lat, lon, radar.lat, radar.lon);
+  // Compute the distance from the target to the current node
+  float current_distance = haversine(target_lon, target_lat, node.lon, node.lat);
 
-        // Check if radar is within range and matches direction
-        if (distance <= RADAR_RANGE_METERS && radar.direction == direction) {
-            Serial.println("Radar Found:");
-            Serial.printf("Distance: %.2f meters, Speed Limit: %d, Direction: %d\n",
-                          distance, radar.speed, radar.direction);
-            radarFound = true;
-        }
-    }
+  // Update the best result if the current node is closer
+  if (best_distance == -1 || current_distance < best_distance) {
+    best_node = node;
+    best_distance = current_distance;
+  }
 
-    if (!radarFound) {
-        Serial.println("No radar found in range.");
-    }
+  // Determine which subtree to search based on depth (longitude or latitude split)
+  int axis = depth % 2;
+  float target_value = (axis == 0) ? target_lon : target_lat;
+  float node_value = (axis == 0) ? node.lon : node.lat;
 
-    radarFile.close();
+  // Choose the primary and secondary subtrees to search
+  uint32_t primary_offset = (target_value < node_value) ? node.left_offset : node.right_offset;
+  uint32_t secondary_offset = (target_value < node_value) ? node.right_offset : node.left_offset;
+
+  // Recursively search the primary subtree
+  nearest_neighbor_search(file, target_lon, target_lat, primary_offset, depth + 1, false);
+
+  // Check if we need to search the secondary subtree
+  if (fabs(target_value - node_value) < best_distance) {
+    nearest_neighbor_search(file, target_lon, target_lat, secondary_offset, depth + 1, false);
+  }
+
+  return best_node;
 }
 
 
+void checkRadars(){
+  // Record the start time
+  unsigned long start_time = millis();
 
+  // Open the KD Tree binary file
+  File file = SPIFFS.open("/radars.bin", "r");
+  if (!file) {
+      Serial.println("Failed to open radars file!");
+      return;
+  }
 
+  float target_lon = -47.809293;
+  float target_lat = -15.882209;
+
+  // Start the search from the root of the KD Tree (offset 0)
+  Node nearest = nearest_neighbor_search(file, target_lon, target_lat, 0, 0, true);
+
+  // Output the nearest node's data
+  Serial.printf("Nearest Node: Lon: %.6f, Lat: %.6f, Distance: %d meters\n", nearest.lon, nearest.lat, (int)(best_distance * 1000));
+  
+  Serial.printf("Time taken to find nearest node: %lu ms\n", millis() - start_time);
+
+  file.close();  // Close the file after use
+}
 
 
 
@@ -92,7 +128,7 @@ void setup() {
     return;
   }
 
-  startWifiAttempt();
+  // startWifiAttempt();
 
 }
 
@@ -101,6 +137,7 @@ const int updateInterval = 300;  // Update every 300ms
 
 void loop() {
   // manageWiFiConnection();
+  Serial.println("============ Loop ============");
   decodeGPSData();  // Decode GPS data once per loop
 
   // Fetch GPS data
@@ -112,13 +149,12 @@ void loop() {
   // Check if it's time to update the display
   if (millis() - lastDisplayUpdate >= updateInterval) {
     lastDisplayUpdate = millis();  // Reset the timer
+
+    checkRadars();
     
     if (speed != -1) {  // If GPS is providing data
       updateDisplay(lat, lon, heading, speed);
 
-      // Check for radars in range
-      checkRadarInRange(lon, lat, speed, heading);
-      
     } else {  // GPS has no data
       noGpsDisplay();
     }
@@ -126,4 +162,3 @@ void loop() {
 
   // Other code here can run without blocking
 }
-
