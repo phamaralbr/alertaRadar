@@ -1,6 +1,5 @@
 from fetch_radar_data import get_token, validate_token, download_csv_with_token
-from csv_to_kdtree import csv_to_binary_kd_tree
-from validate_kdtree import validate_kd_tree
+from csv_to_flat_kdtree import build_tree_from_csv
 from dotenv import load_dotenv
 import os
 
@@ -8,12 +7,12 @@ import os
 load_dotenv()
 
 # Define constants for the radar data fetching process
-MAPARADAR_USER = os.getenv("MAPARADAR_USER", "default_user")
+MAPARADAR_USER = os.getenv("MAPARADAR_USER", "usuario")
 TOKEN_URL = f"https://v1.api.maparadar.com/Token?usuario={MAPARADAR_USER}"
 TOKEN_VALIDATION_URL = "https://v1.api.maparadar.com/TokenValido"
 BASE_URL = "https://v1.api.maparadar.com/Exporta"
 CSV_FILE = "data_output/coordinates.csv"
-KD_TREE_FILE = "data_output/kd_tree.bin"
+KD_TREE_FILE = "data_output/radars.bin"
 
 # ANSI escape codes for colors and styles
 RESET = "\033[0m"
@@ -53,7 +52,7 @@ def fetch_and_validate_data():
         return False
 
     print_step("Step 3: Downloading radar data as CSV...")
-    download_csv_with_token(BASE_URL, token, CSV_FILE)
+    download_csv_with_token(BASE_URL, token, CSV_FILE, MAPARADAR_USER)
     print_success(f"CSV file saved to {CSV_FILE}")
     return True
 
@@ -64,37 +63,21 @@ def process_csv_to_kdtree():
         return False
 
     global expected_points_count
-    expected_points_count = csv_to_binary_kd_tree(CSV_FILE, KD_TREE_FILE)
+    expected_points_count = build_tree_from_csv(CSV_FILE, KD_TREE_FILE)
     return True
-
-def validate_kd_tree_file(expected_points_count):
-    print_step("Step 5: Validating the KD-tree for correctness...")
-    if not os.path.exists(KD_TREE_FILE):
-        print_warning(f"KD-tree file '{KD_TREE_FILE}' not found. Aborting validation.")
-        return False
-
-    if validate_kd_tree(KD_TREE_FILE, expected_points_count):
-        print_success("KD-tree validation passed successfully!")
-        return True
-    else:
-        print_error("KD-tree validation failed. Data may be incorrect or incomplete.")
-        return False
 
 def main():
     print(f"{BOLD}{CYAN}=== Radar Data Processing Pipeline ==={RESET}")
 
-    if not fetch_and_validate_data():
-        print_error("Data retrieval process failed. Aborting.")
-        return
+    # if not fetch_and_validate_data():
+    #     print_error("Data retrieval process failed. Aborting.")
+    #     return
 
     if not process_csv_to_kdtree():
         print_error("CSV to KD-tree conversion failed. Aborting.")
         return
 
-    # if not validate_kd_tree_file(expected_points_count):
-    #     print_error("KD-tree validation failed. Please check the input data.")
-    # else:
-    print_success("=== Pipeline Completed Successfully ===")
+    print_success("=== Pipeline Completed ===")
     print_success(f"CSV saved as: {CSV_FILE}")
     print_success(f"KD-tree saved as: {KD_TREE_FILE}")
 

@@ -52,7 +52,7 @@ def validate_token(validation_url, token):
         return False
 
 # Step 3: Download the CSV file
-def download_csv_with_token(base_url, token, save_path):
+def download_csv_with_token(base_url, token, save_path, user):
     """
     Download a CSV file using a token.
 
@@ -64,7 +64,7 @@ def download_csv_with_token(base_url, token, save_path):
     # Build the complete URL with the token
     params = {
         "token": token,
-        "usuario": "phamatal",
+        "usuario": user,
         "tipoExportacao": "igo8",
         "estado": "",
         "tipoAlerta": "1,2,4,5,6,7,9,",  # Added trailing comma
