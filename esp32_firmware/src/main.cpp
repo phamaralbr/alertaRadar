@@ -3,9 +3,9 @@
 #include "Display.h"
 #include "../config/Config.h"
 #include "ota_update.h"
-#include "WifiManager.h"
+// #include "WifiManager.h"
 #include "FS.h"
-#include "SPIFFS.h"
+#include <LittleFS.h>  // Include the LittleFS library
 
 // Node structure for radar data
 struct Node {
@@ -68,38 +68,37 @@ void addToBuffer(Node node, float distance) {
 
 // Update the rolling buffer with nearby radar nodes from a binary file
 void updateRollingBuffer(File &file, float current_lon, float current_lat, float max_distance_km) {
-  unsigned long start_time_offset = millis();
   bufferCount = 0;  // Reset buffer
 
-  const float delta_lat = max_distance_km / 111.0;  // Convert km to latitude degrees 
+  const float delta_lat = max_distance_km / 111.0;  // Approximate km to degrees of latitude
   
+  // Initialize binary search range
   uint32_t low = 0;
   uint32_t high = (file.size() / sizeof(Node)) - 1;  
-  uint32_t mid; 
 
-  Serial.println("Searching lat");
+  // Binary search to find the starting offset for the latitude range
   while (low <= high) {
-    mid = low + ((high - low) / 2);  // Avoid potential overflow from (low + high) / 2
+    uint32_t mid = low + ((high - low) / 2);  // Avoid potential overflow
+    Node midNode = read_node(file, mid * sizeof(Node));  
 
-    if (read_node(file, mid * sizeof(Node)).lat < current_lat - delta_lat) {
-      low = mid + 1;  // Search in the upper half
-    } 
-    else {
-      high = mid - 1;  // Search in the lower half
+    if (midNode.lat < current_lat - delta_lat) {
+      low = mid + 1;  // Move search to upper half
+    } else {
+      high = mid - 1;  // Move search to lower half
     }
   }
-  
 
-
-  Serial.printf("Time taken to find offset: %lu ms\n", millis() - start_time_offset);
-  
+  // Move file pointer to the calculated starting position
   file.seek(low * sizeof(Node));
 
-  // Process nodes within the search latitude range
+  // Sequentially process nodes within the latitude range
   while (file.available()) {
     Node node = read_node(file, file.position());
+
+    // Break if we are out of the latitude range
     if (node.lat > current_lat + delta_lat) break;
 
+    // Calculate distance and add node to buffer if within range
     float distance = haversine(current_lon, current_lat, node.lon, node.lat);
     if (distance <= max_distance_km) {
       addToBuffer(node, distance);
@@ -135,7 +134,7 @@ void logRollingBuffer() {
 void checkRadars(void *parameter) {
   while (true) {
     unsigned long start_time = millis();
-    File file = SPIFFS.open("/radars.bin", "r");
+    File file = LittleFS.open("/radars.bin", "r");
     if (!file) {
       Serial.println("Failed to open radars file!");
       return;
@@ -182,7 +181,7 @@ void setup() {
   initDisplay();  // Initialize the display
   initGPS();  // Initialize GPS module
 
-  if (!initializeSPIFFS()) return;  // Initialize SPIFFS for file storage
+  if (!initializeLittleFS()) return;  // Initialize LittleFS for file storage
 
   // Create tasks for display and radar buffer updates
   xTaskCreatePinnedToCore(updateDisplayAndGPS, "UpdateDisplayAndGPS", 4096, NULL, 1, NULL, 0);

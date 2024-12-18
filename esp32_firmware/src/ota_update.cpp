@@ -2,13 +2,13 @@
 #include <HTTPClient.h>
 #include <WiFiClientSecure.h>
 #include "FS.h"
-#include "SPIFFS.h"
+#include <LittleFS.h> 
 #include "../config/Config.h"
 
 #define TEST_API_URL "https://jsonplaceholder.typicode.com/posts/1"
-// Function to download and save the file to SPIFFS
+// Function to download and save the file to LittleFS
 void downloadFile(HTTPClient& http) {
-  File file = SPIFFS.open("/kd_tree.bin", "w");
+  File file = LittleFS.open("/kd_tree.bin", "w");
 
   if (file) {
     WiFiClient* stream = http.getStreamPtr();
@@ -36,9 +36,9 @@ void checkForUpdates() {
   Serial.print(flashSize / (1024 * 1024)); // Convert to MB
   Serial.println(" MB");
 
-  // Check SPIFFS allocation
-  Serial.print("SPIFFS Total Space: ");
-  Serial.print(SPIFFS.totalBytes() / 1024);
+  // Check LittleFS allocation
+  Serial.print("LittleFS Total Space: ");
+  Serial.print(LittleFS.totalBytes() / 1024);
   Serial.println(" KB");
 
   
@@ -80,10 +80,10 @@ void checkForUpdates() {
 }
 
 
-// Initialize SPIFFS
-bool initializeSPIFFS() {
-  if (!SPIFFS.begin(true)) {
-    Serial.println("SPIFFS initialization failed!");
+// Initialize LittleFS
+bool initializeLittleFS() {
+  if (!LittleFS.begin(true)) {
+    Serial.println("LittleFS initialization failed!");
     return false;
   }
   return true;

@@ -3,6 +3,6 @@
 
 // Function declarations
 void checkForUpdates();
-bool initializeSPIFFS();
+bool initializeLittleFS();
 
 #endif
